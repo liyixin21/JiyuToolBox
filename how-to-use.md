@@ -2,7 +2,7 @@
 
 ## 1.下载极域工具箱
 
-在[官网](https://jiyutool.liyixin.vip/)点击下载按钮或[点击这里](https://opl.liyixin.vip/d/%E6%9E%81%E5%9F%9F%E5%B7%A5%E5%85%B7%E7%AE%B14.0.exe?sign=2epC5WQ1YYCl1sUpaGujKBsq5AiwS4-6I-ccYhNVksg=:0)下载工具
+在[官网](https://jiyutool.liyixin.vip/)点击下载按钮或[点击这里](https://opl.liyixin.vip/d/public/%E6%9E%81%E5%9F%9F%E5%B7%A5%E5%85%B7%E7%AE%B14.0.exe?sign=6tRWm5bucOfCLZxFJraPYu3E4DiehFAdBmmQyqRhqic=:0)下载工具
 
 ## 2.运行极域工具箱
 

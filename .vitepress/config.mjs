@@ -10,6 +10,7 @@ export default defineConfig({
   description: "一款能够解除极域电子教室断网、解除U盘使用限制等功能的软件",
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],
+    ['link', { rel: 'stylesheet', href: 'https://unpkg.com/@waline/client@v3/dist/waline.css' }],
     ['script', { type: 'text/javascript' },
       `(function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -28,7 +29,7 @@ export default defineConfig({
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     logo: '/logo.png',
-    lastUpdated: true,
+    lastUpdated: { text: '最后更新于' },
     // 导航栏
     nav: [
       { text: '主页', link: '/' },

@@ -16,7 +16,7 @@ hero:
       link: /how-to-use
     - theme: alt
       text: 下载
-      link: https://opl.liyixin.vip/d/%E6%9E%81%E5%9F%9F%E5%B7%A5%E5%85%B7%E7%AE%B14.0.exe?sign=2epC5WQ1YYCl1sUpaGujKBsq5AiwS4-6I-ccYhNVksg=:0
+      link: https://opl.liyixin.vip/d/public/%E6%9E%81%E5%9F%9F%E5%B7%A5%E5%85%B7%E7%AE%B14.0.exe?sign=6tRWm5bucOfCLZxFJraPYu3E4DiehFAdBmmQyqRhqic=:0
     - theme: alt
       text: 问题反馈
       link: /feedback

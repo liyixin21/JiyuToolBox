@@ -18,12 +18,12 @@ export default defineConfig({
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
       })(window, document, "clarity", "script", "o6nldo4au2");`
     ],
-    ['script', { async: true, src: 'https://www.googletagmanager.com/gtag/js?id=G-F0FMWV284X' }],
+    ['script', { async: true, src: 'https://www.googletagmanager.com/gtag/js?id=G-919T2B5W81' }],
     ['script', {},
       `window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-F0FMWV284X');`
+      gtag('config', 'G-919T2B5W81');`
     ],
   ],
   themeConfig: {

@@ -1,0 +1,142 @@
+// Microsoft Visual C++ generated resource script.
+//
+#pragma code_page(65001)
+
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "resource.h"
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+1                       RT_MANIFEST             "app.manifest"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_APP_ICON            ICON                    "res\\logo.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_MAIN_DIALOG DIALOGEX 0, 0, 249, 138
+STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_CAPTION | WS_SYSMENU
+CAPTION "极域工具箱"
+FONT 9, "Microsoft YaHei UI", 400, 0, 0x0
+BEGIN
+    GROUPBOX        "极域控制",-1,7,7,78,76
+    PUSHBUTTON      "启动极域",IDC_BTN_JIYU,14,17,59,14
+    PUSHBUTTON      "挂起极域",IDC_BTN_SUSPEND,14,33,58,14
+    PUSHBUTTON      "解除键盘锁",IDC_BTN_KEYBOARD,14,49,59,14
+    PUSHBUTTON      "窗口化广播",IDC_BTN_WINDOWIZE,14,65,59,14
+    CONTROL         "自动窗口化广播",IDC_CHK_AUTO,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,38,62,10
+    GROUPBOX        "高级工具",-1,90,7,69,76
+    PUSHBUTTON      "解除断网",IDC_BTN_NETWORK,97,18,52,14
+    PUSHBUTTON      "解除U盘限制",IDC_BTN_USB,97,34,52,14
+    PUSHBUTTON      "恢复限制",IDC_BTN_RESTORE,97,50,52,14
+    PUSHBUTTON      "退出黑屏",IDC_BTN_BLACKSCREEN,97,66,52,14
+    GROUPBOX        "功能开关",-1,165,7,74,43
+    CONTROL         "置顶窗口",IDC_CHK_TOPMOST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,16,60,12
+    CONTROL         "防止截屏",IDC_CHK_ANTICAPTURE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,27,60,12
+    GROUPBOX        "快捷键",-1,165,50,74,33
+    CONTROL         "CTRL+W置顶",IDC_CHK_HOTKEY_W,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,58,64,12
+    CONTROL         "CTRL+Q窗口化",IDC_CHK_HOTKEY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,170,69,64,12
+    EDITTEXT        IDC_LOG,7,85,232,40,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    CTEXT           "官网",IDC_LINK_WEBSITE,7,128,18,10,SS_NOTIFY
+    LTEXT           "就绪",IDC_STATUS,30,128,209,10
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""resource.h""\r\n"
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_MAIN_DIALOG, DIALOG
+    BEGIN
+        RIGHTMARGIN, 248
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_MAIN_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+#endif    // 中文(简体，中国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

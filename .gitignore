@@ -1,0 +1,54 @@
+# ===== Visual Studio / MSVC =====
+.vs/
+bin/
+obj/
+*.user
+*.aps
+*.suo
+*.VC.db
+*.VC.db-shm
+*.VC.db-wal
+*.VC.opendb
+*.opendb
+ipch/
+*.ncb
+*.sdf
+*.opensdf
+*.pdb
+*.ilk
+*.tlog
+*.iobj
+*.ipdb
+*.recipe
+*.idb
+*.res
+
+# ===== CMake =====
+out/
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+.ninja_deps
+.ninja_log
+*.ninja
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# ===== 打包产物（exe 用 GitHub Releases 分发）=====
+*.exe
+
+# ===== 内部文档 / 独立子项目 =====
+分析当前项目.md
+MythwareToolkit/

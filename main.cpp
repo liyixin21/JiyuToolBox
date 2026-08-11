@@ -1,7 +1,9 @@
 ﻿// ============================================================================
 // 极域工具箱 (JiyuToolBox) - C++ 版
-// 由 Python 4.1 版改写，Win32 原生对话框程序。
-// 界面使用 VS 资源编辑器（resource.rc 对话框模板）图形化设计。
+// Copyright (C) 2026 liyixin21
+// SPDX-License-Identifier: GPL-3.0-or-later
+// 由 Python 4.1 版改写，Win32 原生对话框程序
+// 界面使用 VS 资源编辑器（resource.rc 对话框模板）图形化设计
 //
 // 功能（原版 + 反控制增强）:
 //   1. 解除断网    : 驱动欺骗(IOCTL 0x120014) + 暴力杀线程 MasterHelper/GATESRV + 停止 tdnetfilter 服务(不卸载)

@@ -56,7 +56,7 @@ export default defineConfig({
 
     // 页脚
     footer: {
-      message: '基于 MIT 许可发布',
+      message: '基于 GPL-3.0 许可发布',
       copyright: '版权所有 © 2024-2026 liyixin21'
     },
 

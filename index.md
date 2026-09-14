@@ -18,6 +18,9 @@ hero:
       text: 下载
       link: https://opl.liyixin.vip/d/NAS/public/%E6%9E%81%E5%9F%9F%E5%B7%A5%E5%85%B7%E7%AE%B15.0.exe?sign=bxor189wZ24FE1ooSJ0dGj41SpuTImJ84EMjW3UNp7c=:0
     - theme: alt
+      text: 备用下载
+      link: https://ghproxy.liyixin.vip/https://github.com/liyixin21/JiyuToolBox/releases/download/v5.0/JiyuToolBox-5.0.exe
+    - theme: alt
       text: 问题反馈
       link: /feedback
 

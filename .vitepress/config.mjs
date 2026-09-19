@@ -71,6 +71,8 @@ export default defineConfig({
   },
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],
+    // 百度站长平台 HTML 标签验证；每个页面都会注入，验证时保持不动
+    ['meta', { name: 'baidu-site-verification', content: 'codeva-x7HpfbriBw' }],
     ['link', {
       rel: 'stylesheet',
       href: 'https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.css',

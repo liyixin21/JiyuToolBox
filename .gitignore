@@ -19,3 +19,6 @@ node_modules/
 # Logs
 *.log
 npm-debug.log*
+
+# 本地修复明细（仅供本地查看，不随仓库分发）
+FIXES.md

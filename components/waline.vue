@@ -13,6 +13,19 @@ const { isDark } = useData();
 
 let walineInstance = null;
 
+// 主站 CDN 优先，失败时回退到备用 CDN（两者均为 Waline v3 同版本产物）
+const WALINE_CDN = 'https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.js';
+const WALINE_CDN_FALLBACK = 'https://unpkg.com/@waline/client@v3/dist/waline.js';
+
+const loadWalineClient = async () => {
+  try {
+    return await import(/* @vite-ignore */ WALINE_CDN);
+  } catch (err) {
+    console.warn('[waline] 主 CDN 加载失败，回退备用 CDN', err);
+    return await import(/* @vite-ignore */ WALINE_CDN_FALLBACK);
+  }
+};
+
 const initWaline = async () => {
   // 销毁旧实例
   if (walineInstance) {
@@ -22,7 +35,7 @@ const initWaline = async () => {
 
   await nextTick();
 
-  const { init } = await import('https://unpkg.com/@waline/client@v3/dist/waline.js');
+  const { init } = await loadWalineClient();
   walineInstance = init({
     el: '#waline',
     serverURL: 'https://waline.liyixin.vip',

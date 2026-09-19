@@ -1,16 +1,82 @@
 import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
+const SITE_URL = 'https://jiyutool.liyixin.vip'
+const SITE_NAME = '极域工具箱'
+
+// relativePath: 'index.md' -> '/', 'how-to-use.md' -> '/how-to-use.html'
+const toPageUrl = (relativePath) =>
+  `${SITE_URL}/${relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '.html')}`
+
+/**
+ * 中文检索分词器。
+ *
+ * 默认分词按空白/标点切分，中文正文会整句变成一个 token，搜「断网」「截屏」等词永远为空；
+ * 而 Intl.Segmenter 对中文是逐字切分（实测「解除断网」-> 解除 / 断 / 网），同样搜不到「断网」。
+ * 因此改为：CJK 连续段切「单字 + 相邻二元组」，拉丁/数字段按词切分并转小写。
+ * 这样任意两字词都能命中，较长查询靠多 token 的 OR 匹配 + 前缀匹配兜底。
+ *
+ * 注意：该函数会被 VitePress 序列化进 siteData、在客户端用 new Function 还原，
+ * 因此必须自包含——不能引用本文件里的其它变量或 import。
+ */
+const searchTokenizer = (text) => {
+  const cjk = '\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff'
+  const cjkOnly = new RegExp('^[' + cjk + ']+$')
+  const segments = new RegExp('[' + cjk + ']+|[^' + cjk + ']+', 'g')
+  const tokens = []
+  for (const segment of String(text).match(segments) || []) {
+    if (cjkOnly.test(segment)) {
+      for (let i = 0; i < segment.length; i++) {
+        tokens.push(segment[i])
+        if (i + 1 < segment.length) tokens.push(segment.slice(i, i + 2))
+      }
+    } else {
+      for (const word of segment.toLowerCase().split(/[^a-z0-9]+/)) {
+        if (word) tokens.push(word)
+      }
+    }
+  }
+  return tokens
+}
+
 export default defineConfig({
-  vite: {
-    assetsInclude: ['**/*.blob'],
-  },
   lang: 'zh-CN',
   title: "极域工具箱",
-  description: "一款能够解除极域电子教室断网、解除U盘使用限制等功能的软件",
+  description: "极域工具箱：解除极域电子教室断网、U盘限制与键盘锁定，支持窗口化屏幕广播、退出黑屏、挂起极域、置顶窗口与防截屏。",
+
+  // 报告类文档不进站点，避免生成多余页面与污染搜索索引
+  srcExclude: ['FIXES.md'],
+
+  // 生成 sitemap.xml（docs:build 时产出）
+  sitemap: { hostname: SITE_URL },
+
+  // 每页注入 canonical 与 Open Graph / Twitter 卡片
+  transformHead({ pageData, title, description }) {
+    const url = toPageUrl(pageData.relativePath)
+    const ogTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`
+    const image = `${SITE_URL}/logo.png`
+    return [
+      ['link', { rel: 'canonical', href: url }],
+      ['meta', { property: 'og:type', content: 'website' }],
+      ['meta', { property: 'og:site_name', content: SITE_NAME }],
+      ['meta', { property: 'og:title', content: ogTitle }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: url }],
+      ['meta', { property: 'og:image', content: image }],
+      ['meta', { name: 'twitter:card', content: 'summary' }],
+      ['meta', { name: 'twitter:title', content: ogTitle }],
+      ['meta', { name: 'twitter:description', content: description }],
+      ['meta', { name: 'twitter:image', content: image }],
+    ]
+  },
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],
-    ['link', { rel: 'stylesheet', href: 'https://unpkg.com/@waline/client@v3/dist/waline.css' }],
+    ['link', {
+      rel: 'stylesheet',
+      href: 'https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.css',
+      // CDN 不可用时退回 unpkg，避免评论样式丢失
+      onerror: "this.onerror=null;this.href='https://unpkg.com/@waline/client@v3/dist/waline.css'",
+    }],
     ['script', { type: 'text/javascript' },
       `(function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -64,6 +130,9 @@ export default defineConfig({
     search: {
       provider: 'local',
       options: {
+        miniSearch: {
+          options: { tokenize: searchTokenizer },
+        },
         locales: {
           root: {
             translations: {
@@ -110,6 +179,7 @@ export default defineConfig({
       title: "页面未找到",
       quote: "哎呀，您好像迷失在网络的小胡同里啦，别着急，赶紧回头是岸！",
       linkText: "返回首页",
+      linkLabel: "返回首页",
     },
 
   }

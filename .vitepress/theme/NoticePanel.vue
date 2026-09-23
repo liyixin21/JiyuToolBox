@@ -10,6 +10,8 @@ defineProps({
   title: { type: String, default: '' },
   paragraphs: { type: Array, default: () => [] },
   links: { type: Array, default: () => [] },
+  // 可选配图，渲染在正文下方（比如正文最后一行是群号时的二维码）
+  image: { type: Object, default: null },
   // 'modal'：显示"关闭"与"不再显示"；'floating'：只显示"收起"，避免误点持久隐藏
   mode: { type: String, default: 'modal' },
 })
@@ -25,6 +27,15 @@ const emit = defineEmits(['go', 'close', 'never', 'collapse'])
   <div class="VPNotice-body">
     <p v-for="(paragraph, index) in paragraphs" :key="index" class="VPNotice-text">{{ paragraph }}</p>
   </div>
+
+  <img
+    v-if="image && image.src"
+    class="VPNotice-image"
+    :class="{ 'is-modal': mode === 'modal' }"
+    :src="image.src"
+    :alt="image.alt || ''"
+    :width="mode === 'modal' ? (image.width || 180) : (image.widthSmall || 150)"
+  />
 
   <div v-if="links.length" class="VPNotice-links">
     <a
@@ -88,6 +99,17 @@ const emit = defineEmits(['go', 'close', 'never', 'collapse'])
   color: var(--vp-c-text-2);
   font-size: 14px;
   line-height: 1.7;
+}
+
+.VPNotice-image {
+  align-self: flex-start;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* 弹窗是居中大面板，配图可略大一些 */
+.VPNotice-image.is-modal {
+  align-self: center;
 }
 
 .VPNotice-links {

@@ -86,6 +86,7 @@ const paragraphs = computed(() => {
 })
 
 const links = computed(() => notice.links || [])
+const noticeImage = computed(() => (notice.image && notice.image.src ? notice.image : null))
 const showTag = computed(() => Boolean(notice.tag))
 const position = computed(() => notice.floating?.position === 'bottom-left' ? 'is-left' : 'is-right')
 const offset = computed(() => notice.floating?.offset ?? 24)
@@ -126,6 +127,7 @@ const go = (link) => {
             :title="notice.title"
             :paragraphs="paragraphs"
             :links="links"
+            :image="noticeImage"
             mode="modal"
             @go="go"
             @close="closeNotice"
@@ -153,6 +155,7 @@ const go = (link) => {
             :title="notice.title"
             :paragraphs="paragraphs"
             :links="links"
+            :image="noticeImage"
             mode="floating"
             @go="go"
             @close="closeNotice"

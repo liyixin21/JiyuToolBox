@@ -3,6 +3,7 @@
 #pragma code_page(65001)
 
 #include "resource.h"
+#include "version.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -123,6 +124,49 @@ END
 IDD_MAIN_DIALOG AFX_DIALOG_LAYOUT
 BEGIN
     0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+// 版本号全部来自 version.h（与 main.cpp 共用同一份定义），
+// 此处不再硬编码任何版本数字，避免两处不同步。
+// 语言块 ID "080404b0"：0x0804 = 简体中文，0x04b0 = 1200 (Unicode)。
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION JTB_VER_MAJOR,JTB_VER_MINOR,JTB_VER_PATCH,0
+ PRODUCTVERSION JTB_VER_MAJOR,JTB_VER_MINOR,JTB_VER_PATCH,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "CompanyName",      "liyixin21"
+            VALUE "FileDescription",  "极域工具箱"
+            VALUE "FileVersion",      JTB_VER_STR
+            VALUE "InternalName",     "JiyuToolBox"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 liyixin21"
+            VALUE "OriginalFilename", "JiyuToolBox.exe"
+            VALUE "ProductName",      "极域工具箱"
+            VALUE "ProductVersion",   JTB_VER_STR
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
 END
 
 #endif    // 中文(简体，中国) resources

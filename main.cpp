@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // 极域工具箱 (JiyuToolBox) - C++ 版
 // Copyright (C) 2026 liyixin21
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -21,8 +21,6 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <windows.h>
 #include <windowsx.h>
 #include <wincon.h>
@@ -42,23 +40,24 @@
 #include <utility>
 #include <cstdio>
 #include <cwchar>
+#include <cwctype>
 
 #pragma comment(lib, "winhttp.lib")
-#pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "advapi32.lib")
 
 #include "resource.h"
+#include "version.h"          // 版本号唯一来源，与 resource.rc 的 VERSIONINFO 共用
 
 // ---------------------------------------------------------------------------
 // 常量（与原 Python 版保持一致）
 // ---------------------------------------------------------------------------
-static const wchar_t* kCurrentVersion = L"5.0";
+// 版本号在 version.h 里定义，改那一处即可同时更新程序内版本与 exe 文件属性版本
+static const wchar_t* kCurrentVersion = JTB_VER_WSTR;
 static const wchar_t* kVersionUrl     = L"https://jiyutool.liyixin.vip/version.txt";
 static const wchar_t* kOvrUrl         = L"https://jiyutool.liyixin.vip/ovr.txt";
 static const wchar_t* kWebsiteUrl     = L"https://jiyutool.liyixin.vip/";
-static const wchar_t* kMyIpUrl        = L"https://my.ip.cn/";
 static const wchar_t* kBroadcastTitle   = L"屏幕广播";          // 极域投屏/广播窗口标题
 static const wchar_t* kBlackScreenTitle = L"BlackScreen Window"; // 极域"黑屏安静"窗口标题（任务管理器可见）
 
@@ -83,6 +82,8 @@ static HWND g_hDlg = nullptr;
 static std::atomic<bool> g_keyboardLockOn{ false };    // 键盘锁解除循环开关
 static std::thread g_unlockThread;                     // 键盘锁解除线程
 static HWND g_lastBroadcastHwnd = nullptr;             // 上次检测到的广播窗口
+static bool g_lastBroadcastWindowing = false;          // 上次检测到的窗口化状态（true=已窗口化）
+static DWORD g_manualToggleTick = 0;                   // 上次手动切换广播窗口的时刻，用于抑制自动逻辑
 static std::atomic<bool> g_topmostOn{ false };         // 置顶窗口开关
 static std::thread g_topmostThread;                    // 置顶窗口线程
 static CRITICAL_SECTION g_topmostCs;                   // 置顶操作串行化（轮询线程/事件驱动并发保护）
@@ -99,7 +100,7 @@ static std::wstring TrimWs(const std::wstring& s) {
     return s.substr(b, e - b + 1);
 }
 
-// GBK/GB2312 字节串 -> UTF-16（用于解析 my.ip.cn 等 GBK 页面/输出）
+// GBK/GB2312 字节串 -> UTF-16（用于解析命令行 exe 的 GBK 输出、服务端文本文件等）
 static std::wstring DecodeGbk(const std::string& s) {
     if (s.empty()) return L"";
     UINT cp = 936;
@@ -114,40 +115,6 @@ static std::wstring DecodeGbk(const std::string& s) {
     return w;
 }
 
-static std::string WideToUtf8(const std::wstring& w) {
-    if (w.empty()) return "";
-    int n = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
-    std::string s(n, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), &s[0], n, nullptr, nullptr);
-    return s;
-}
-
-// UTF-8 字节串 -> UTF-16（my.ip.cn 等页面新版为 UTF-8）
-static std::wstring DecodeUtf8(const std::string& s) {
-    if (s.empty()) return L"";
-    int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)s.size(), nullptr, 0);
-    if (n <= 0) return L"";
-    std::wstring w(n, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)s.size(), &w[0], n);
-    return w;
-}
-
-// 把字符串转成 JSON 字符串字面量（转义引号/反斜杠/换行）
-static std::string JsonEscape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size());
-    for (char c : s) {
-        switch (c) {
-            case '"':  out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\n': out += "\\n";  break;
-            case '\r': out += "\\r";  break;
-            case '\t': out += "\\t";  break;
-            default:   out += c;      break;
-        }
-    }
-    return out;
-}
 
 // ---------------------------------------------------------------------------
 // 日志（跨线程安全：工作线程 PostMessage，UI 线程负责写入日志框）
@@ -191,7 +158,7 @@ static std::string HttpRequest(const std::wstring& url, const std::wstring& meth
         port = (INTERNET_PORT)_wtoi(hostport.substr(colon + 1).c_str());
     }
 
-    HINTERNET hSession = WinHttpOpen(L"JiyuToolBox/5.0",
+    HINTERNET hSession = WinHttpOpen(JTB_UA_WSTR,
                                      WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                      WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return "";
@@ -386,7 +353,10 @@ static bool KillProcessByThreads(DWORD pid) {
     EnablePrivilege(L"SeDebugPrivilege");
 
     bool ok = false;
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid);
+    // th32ProcessID 必须传 0：TH32CS_SNAPTHREAD 本身就返回"系统内全部线程"，下面的循环已按
+    // th32OwnerProcessID 过滤。若把目标 PID 传进来，32 位进程在 64 位系统上会因目标是 64 位进程
+    // 而返回 ERROR_PARTIAL_COPY(299)（MSDN 明确记载），快照句柄无效 → 杀进程静默失效。
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
     if (snap != INVALID_HANDLE_VALUE) {
         THREADENTRY32 te;
         te.dwSize = sizeof(te);
@@ -563,7 +533,64 @@ static void ExitBlackScreen() {
     }).detach();
 }
 
-// 防截屏：WDA_EXCLUDEFROMCAPTURE 使窗口在录屏/截图中不显示
+// 防截屏：WDA_EXCLUDEFROMCAPTURE 使窗口在录屏/截图中不显示。
+//
+// 注意 MSDN 对该标志的定义：窗口"只在物理显示器上显示，其它任何地方都不出现"。
+// 也就是说远程控制（ToDesk / 向日葵 / 远程桌面）、录屏、虚拟机画面里都看不到本窗口，
+// 连提示弹窗也会被 CBT 钩子一并隐藏。
+//
+// 因此默认开启，但必须留退路，否则在远程/虚拟环境中会把唯一的操作入口焊死：
+//   1) 命令行 --nocap / --cap 强制指定，并立即记入注册表；
+//   2) 界面复选框的勾选状态同样记入注册表，下次启动沿用。
+// 首次运行无记录时用默认值（开启）。若在远程环境中失去界面：
+// 结束进程后执行  JiyuToolBox.exe --nocap  启动一次即可恢复。
+static const wchar_t* kRegKey            = L"Software\\JiyuToolBox";
+static const wchar_t* kRegValAntiCapture = L"AntiCapture";
+
+// 读取上次的勾选状态：-1 = 无记录（用默认值），0 = 关，1 = 开
+static int LoadAntiCapturePref() {
+    HKEY hk = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, kRegKey, 0, KEY_QUERY_VALUE, &hk) != ERROR_SUCCESS)
+        return -1;
+    DWORD val = 0, cb = sizeof(val), type = REG_DWORD;
+    LONG r = RegQueryValueExW(hk, kRegValAntiCapture, nullptr, &type, (LPBYTE)&val, &cb);
+    RegCloseKey(hk);
+    if (r != ERROR_SUCCESS || type != REG_DWORD || cb != sizeof(val)) return -1;
+    return val ? 1 : 0;
+}
+
+static void SaveAntiCapturePref(bool on) {
+    HKEY hk = nullptr;
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, kRegKey, 0, nullptr, 0,
+                        KEY_SET_VALUE, nullptr, &hk, nullptr) != ERROR_SUCCESS)
+        return;
+    DWORD val = on ? 1u : 0u;
+    RegSetValueExW(hk, kRegValAntiCapture, 0, REG_DWORD, (const BYTE*)&val, sizeof(val));
+    RegCloseKey(hk);
+}
+
+static int g_cmdAntiCapture = -1;   // 命令行指定：-1 未指定 / 0 强制关 / 1 强制开
+
+static void ParseCommandLine(LPWSTR lpCmdLine) {
+    if (!lpCmdLine || !*lpCmdLine) return;
+    // 按空白切分后精确匹配，避免 --capture 之类的近似参数被误命中
+    std::wstring cmd = lpCmdLine;
+    size_t i = 0;
+    while (i < cmd.size()) {
+        while (i < cmd.size() && std::iswspace(cmd[i])) ++i;
+        size_t b = i;
+        while (i < cmd.size() && !std::iswspace(cmd[i])) ++i;
+        if (i <= b) continue;
+        std::wstring tok = cmd.substr(b, i - b);
+        if (tok.size() >= 2 && tok.front() == L'"' && tok.back() == L'"')
+            tok = tok.substr(1, tok.size() - 2);
+        for (size_t k = 0; k < tok.size(); ++k) tok[k] = (wchar_t)std::towlower(tok[k]);
+        // --nocap 优先：若两个都出现，以最后出现的为准（下面不提前 return）
+        if (tok == L"--nocap" || tok == L"/nocap") g_cmdAntiCapture = 0;
+        else if (tok == L"--cap" || tok == L"/cap") g_cmdAntiCapture = 1;
+    }
+}
+
 static void SetWindowCaptureProtect(HWND hwnd, bool on) {
     if (hwnd && IsWindow(hwnd))
         SetWindowDisplayAffinity(hwnd, on ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE);
@@ -594,6 +621,28 @@ static void RemoveCbtHook() {
 //  2) 再把自己顶回 HWND_TOPMOST。
 //  未被盖住时零操作，避免无谓 SetWindowPos 造成的闪烁。
 // 轮询线程与 WM_WINDOWPOSCHANGED 事件驱动均调用；临界区保证并发安全。
+// EnumWindows 回调。必须是显式 __stdcall（WNDENUMPROC 的调用约定）：
+// x86 下 lambda 的默认调用约定是 __cdecl，与 __stdcall 不兼容，无法隐式转换成 WNDENUMPROC；
+// x64 只有一种调用约定所以能过编译——这正是 32 位构建下才会暴露的问题。
+// 坐标与自身句柄通过文件级静态变量传递（进入前已由临界区串行化）。
+static POINT g_keepTopmostPt;
+static HWND  g_keepTopmostSelf;
+
+static BOOL CALLBACK KeepTopmostEnumProc(HWND h, LPARAM) {
+    if (h == g_keepTopmostSelf) return TRUE;
+    if (!IsWindowVisible(h)) return TRUE;
+    if (GetWindowLongPtrW(h, GWL_EXSTYLE) & WS_EX_TOPMOST) {
+        RECT r;
+        if (GetWindowRect(h, &r) &&
+            r.left <= g_keepTopmostPt.x && g_keepTopmostPt.x <= r.right &&
+            r.top <= g_keepTopmostPt.y && g_keepTopmostPt.y <= r.bottom) {
+            SetWindowPos(h, HWND_NOTOPMOST, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
+    return TRUE;
+}
+
 static void KeepTopmost(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return;
     RECT rc;
@@ -602,26 +651,11 @@ static void KeepTopmost(HWND hwnd) {
     HWND top = WindowFromPoint(pt);
     if (top == hwnd || IsChild(hwnd, top)) return;      // 已是最前 → 零操作
 
-    static POINT s_pt;
-    static HWND s_self;
     EnterCriticalSection(&g_topmostCs);
-    s_pt = pt;
-    s_self = hwnd;
+    g_keepTopmostPt = pt;
+    g_keepTopmostSelf = hwnd;
     // 降级盖住自己中心点的所有可见 TOPMOST 窗口
-    EnumWindows([](HWND h, LPARAM) -> BOOL {
-        if (h == s_self) return TRUE;
-        if (!IsWindowVisible(h)) return TRUE;
-        if (GetWindowLongPtrW(h, GWL_EXSTYLE) & WS_EX_TOPMOST) {
-            RECT r;
-            if (GetWindowRect(h, &r) &&
-                r.left <= s_pt.x && s_pt.x <= r.right &&
-                r.top <= s_pt.y && s_pt.y <= r.bottom) {
-                SetWindowPos(h, HWND_NOTOPMOST, 0, 0, 0, 0,
-                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-            }
-        }
-        return TRUE;
-    }, 0);
+    EnumWindows(KeepTopmostEnumProc, 0);
     LeaveCriticalSection(&g_topmostCs);
     // 顶回自己
     SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
@@ -706,12 +740,15 @@ static void ToggleHotkeyW(HWND hDlg, bool enable) {
 // 窗口化广播
 // ---------------------------------------------------------------------------
 // 广播窗口化/全屏化：先读样式判断当前状态，再发命令双向切换
-static void ToggleBroadcastWindow() {
+// bManual = true 表示由用户按钮/热键触发，会记录时刻以抑制随后的自动逻辑，
+// 避免用户手动全屏后立刻被"自动窗口化"顶回来，造成拉锯。
+static void ToggleBroadcastWindow(bool bManual = false) {
     HWND hwnd = FindWindowW(nullptr, kBroadcastTitle);
     if (!hwnd) {
         LogToDlg(L"未找到投屏窗口");
         return;
     }
+    if (bManual) g_manualToggleTick = GetTickCount();
     LONG style = GetWindowLongW(hwnd, GWL_STYLE);
     bool bWindowing = (style & (WS_CAPTION | WS_SIZEBOX)) != 0;   // 有标题/可调大小 = 已窗口化
     BOOL r = PostMessageW(hwnd, WM_COMMAND, (BM_CLICK << 16) | 1004, 0);
@@ -855,10 +892,18 @@ static void OnRestore() {
 
 // 从注册表读极域安装目录（借鉴 MythwareToolkit）：
 // HKLM\SOFTWARE\TopDomain\e-Learning Class Standard\1.00\TargetDirectory
-// 程序是 64 位，先读 32 位注册表视图(KEY_WOW64_32KEY)，失败再试 64 位视图。
-// 读到的路径校验文件存在后才用，否则回退默认安装路径。返回 StudentMain.exe 完整路径。
+// 先读 32 位注册表视图(KEY_WOW64_32KEY)，失败再试 64 位视图；在 32 位系统上这两个标志会被忽略，
+// 直接读本机唯一视图，行为同样正确。
+// 读到的路径校验文件存在后才用，否则回退候选安装路径。返回 StudentMain.exe 完整路径。
 static std::wstring GetJiyuStudentPath() {
-    const std::wstring fallback = L"C:\\Program Files (x86)\\Mythware\\Classroom Management by Mythware\\StudentMain.exe";
+    // 兜底候选（注册表不可用时按顺序探测）：64 位系统的 32 位程序装在 Program Files (x86)，
+    // 32 位系统上只有 Program Files；旧版极域安装路径不带到 "Classroom Management by Mythware" 一级。
+    const wchar_t* kCandidates[] = {
+        L"C:\\Program Files (x86)\\Mythware\\Classroom Management by Mythware\\StudentMain.exe",
+        L"C:\\Program Files (x86)\\Mythware\\StudentMain.exe",
+        L"C:\\Program Files\\Mythware\\Classroom Management by Mythware\\StudentMain.exe",
+        L"C:\\Program Files\\Mythware\\StudentMain.exe",
+    };
     const wchar_t* subKey = L"SOFTWARE\\TopDomain\\e-Learning Class Standard\\1.00";
     wchar_t dir[MAX_PATH * 2] = {};
     bool got = false;
@@ -880,7 +925,10 @@ static std::wstring GetJiyuStudentPath() {
         p += L"StudentMain.exe";
         if (GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES) return p;
     }
-    return fallback;
+    for (const wchar_t* c : kCandidates) {
+        if (GetFileAttributesW(c) != INVALID_FILE_ATTRIBUTES) return c;
+    }
+    return kCandidates[0];
 }
 
 // 启动极域：优先用 explorer 的 token 降权启动（避免极域继承管理员权限），失败回退 ShellExecute。
@@ -1008,16 +1056,26 @@ static void OnPeriodicCheck(HWND hDlg) {
         LONG style = GetWindowLongW(bw, GWL_STYLE);
         bool bWindowing = (style & (WS_CAPTION | WS_SIZEBOX)) != 0;
         SetDlgItemTextW(hDlg, IDC_BTN_WINDOWIZE, bWindowing ? L"全屏化广播" : L"窗口化广播");
-        if (bw != g_lastBroadcastHwnd) {          // 新出现的广播窗口
-            g_lastBroadcastHwnd = bw;
-            if (IsDlgButtonChecked(hDlg, IDC_CHK_AUTO) == BST_CHECKED) {
-                ToggleBroadcastWindow();
+
+        // 自动窗口化：只在「状态发生转变」时触发一次，避免反复发命令造成闪烁。
+        // 注意不能只用「窗口句柄变化」判断——教师端把已窗口化的广播再次切回全屏时，
+        // 窗口句柄并没有变，只是样式变了（这正是之前自动逻辑失效的原因）。
+        // 两种需要介入的情形：① 新出现的广播窗口；② 已窗口化的窗口被切回全屏。
+        if (IsDlgButtonChecked(hDlg, IDC_CHK_AUTO) == BST_CHECKED && !bWindowing) {
+            bool bNewWindow       = (bw != g_lastBroadcastHwnd);
+            bool bBackToFullscreen = (bw == g_lastBroadcastHwnd && g_lastBroadcastWindowing);
+            bool bManualSuppress  = (GetTickCount() - g_manualToggleTick) < 3000;
+            if ((bNewWindow || bBackToFullscreen) && !bManualSuppress) {
+                ToggleBroadcastWindow(false);
             }
         }
+        g_lastBroadcastHwnd = bw;
+        g_lastBroadcastWindowing = bWindowing;
     } else {
         EnableWindow(GetDlgItem(hDlg, IDC_BTN_WINDOWIZE), FALSE);
         SetDlgItemTextW(hDlg, IDC_BTN_WINDOWIZE, L"窗口化广播");
         g_lastBroadcastHwnd = nullptr;
+        g_lastBroadcastWindowing = false;
     }
 }
 
@@ -1047,6 +1105,9 @@ static void UpdateCheckThreadFunc() {
     PostMessageW(g_hDlg, WM_APP_SHOW_UPDATE, 0,
                  (LPARAM)new std::pair<std::wstring, std::wstring>(latest, ovr));
 }
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 
 // ---------------------------------------------------------------------------
@@ -1101,9 +1162,18 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
                                      DEFAULT_PITCH, L"Microsoft YaHei UI");
         SetWindowFont(GetDlgItem(hDlg, IDC_LINK_WEBSITE), linkFont, TRUE);
 
-        // 功能开关默认状态：防截屏默认开；置顶默认关；快捷键(CTRL+Q/CTRL+W)默认开
-        CheckDlgButton(hDlg, IDC_CHK_ANTICAPTURE, BST_CHECKED);
-        if (IsDlgButtonChecked(hDlg, IDC_CHK_ANTICAPTURE) == BST_CHECKED) {
+        // 功能开关默认状态：防截屏默认开、置顶默认关、快捷键(CTRL+Q/CTRL+W)默认开。
+        // 防截屏取值优先级：命令行 --cap/--nocap > 注册表记忆的上次选择 > 默认开启
+        bool antiCapture = true;
+        if (g_cmdAntiCapture >= 0) {
+            antiCapture = (g_cmdAntiCapture == 1);
+            SaveAntiCapturePref(antiCapture);        // 命令行指定一次，之后沿用
+        } else {
+            int pref = LoadAntiCapturePref();
+            if (pref >= 0) antiCapture = (pref == 1);
+        }
+        CheckDlgButton(hDlg, IDC_CHK_ANTICAPTURE, antiCapture ? BST_CHECKED : BST_UNCHECKED);
+        if (antiCapture) {
             SetWindowCaptureProtect(hDlg, true);
             InstallCbtHook();
         }
@@ -1127,7 +1197,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
         case IDC_BTN_RESTORE:   OnRestore(); break;
         case IDC_BTN_JIYU:      OnJiyu(); break;
         case IDC_BTN_KEYBOARD:  OnKeyboard(hDlg); break;
-        case IDC_BTN_WINDOWIZE: ToggleBroadcastWindow(); break;
+        case IDC_BTN_WINDOWIZE: ToggleBroadcastWindow(true); break;
         case IDC_BTN_SUSPEND: {
             DWORD pid = GetProcessIDFromName(L"StudentMain.exe");
             if (pid) {
@@ -1162,6 +1232,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
             if (HIWORD(wParam) == BN_CLICKED) {
                 bool on = IsDlgButtonChecked(hDlg, IDC_CHK_ANTICAPTURE) == BST_CHECKED;
                 SetWindowCaptureProtect(hDlg, on);
+                SaveAntiCapturePref(on);             // 记住本次选择，下次启动沿用
                 if (on) { InstallCbtHook(); LogToDlg(L"防止截屏已开启"); }
                 else    { RemoveCbtHook(); LogToDlg(L"防止截屏已关闭"); }
             }
@@ -1202,7 +1273,7 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
 
     case WM_HOTKEY:
         if (wParam == HOTKEY_ID_WINDOWIZE) {
-            ToggleBroadcastWindow();   // CTRL+Q
+            ToggleBroadcastWindow(true);   // CTRL+Q
         } else if (wParam == HOTKEY_ID_TOPMOST) {
             SetTopmost(hDlg, !g_topmostOn.load());   // CTRL+W 切换置顶
         }
@@ -1266,10 +1337,16 @@ static INT_PTR CALLBACK DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
 // ---------------------------------------------------------------------------
 // 入口
 // ---------------------------------------------------------------------------
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int) {
-    // 单实例运行
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR lpCmdLine, int) {
+    ParseCommandLine(lpCmdLine);
+
+    // 单实例运行。
+    // 例外：命令行显式指定了防截屏开关（--cap / --nocap）时跳过本检查。
+    // 原因：防截屏开启时窗口在远程控制/录屏环境里完全不可见，用户无法通过界面取消勾选，
+    // 而此时旧的不可见实例仍在运行——若这里拦下新进程，逃生通道就被自己堵死了。
+    // 这种情况属于紧急恢复，允许并存；用户看到正常界面后关掉旧实例即可。
     CreateMutexW(nullptr, TRUE, L"JiyuToolBox_SingleInstance");
-    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    if (GetLastError() == ERROR_ALREADY_EXISTS && g_cmdAntiCapture < 0) {
         MessageBoxW(nullptr, L"极域工具箱已在运行！", L"提示",
                     MB_OK | MB_ICONINFORMATION);
         return 0;

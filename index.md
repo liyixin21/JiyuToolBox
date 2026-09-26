@@ -16,10 +16,10 @@ hero:
       link: /how-to-use
     - theme: alt
       text: 下载
-      link: https://jiyutool.liyixin.vip/JiyuToolBox-5.0.exe
+      link: https://jiyutool.liyixin.vip/JiyuToolBox-5.1.exe
     - theme: alt
       text: 备用下载
-      link: https://ghproxy.liyixin.vip/https://github.com/liyixin21/JiyuToolBox/releases/download/v5.0/JiyuToolBox-5.0.exe
+      link: https://ghproxy.liyixin.vip/https://github.com/liyixin21/JiyuToolBox/releases/download/v5.1/JiyuToolBox-5.1.exe
     - theme: alt
       text: 问题反馈
       link: /feedback

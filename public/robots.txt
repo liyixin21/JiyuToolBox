@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://jiyutool.liyixin.vip/sitemap.xml

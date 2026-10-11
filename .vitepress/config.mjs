@@ -48,7 +48,7 @@ export default defineConfig({
   srcExclude: ['FIXES.md'],
 
   // 生成 sitemap.xml（docs:build 时产出）
-  sitemap: { hostname: SITE_URL },
+  //sitemap: { hostname: SITE_URL },
 
   // 每页注入 canonical 与 Open Graph / Twitter 卡片
   transformHead({ pageData, title, description }) {

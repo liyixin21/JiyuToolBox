@@ -73,12 +73,7 @@ export default defineConfig({
     ['link', { rel: 'icon', href: '/logo.png' }],
     // 百度站长平台 HTML 标签验证；每个页面都会注入，验证时保持不动
     ['meta', { name: 'baidu-site-verification', content: 'codeva-x7HpfbriBw' }],
-    ['link', {
-      rel: 'stylesheet',
-      href: 'https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.css',
-      // CDN 不可用时退回 unpkg，避免评论样式丢失
-      onerror: "this.onerror=null;this.href='https://unpkg.com/@waline/client@v3/dist/waline.css'",
-    }],
+    // 评论组件（Twikoo）的样式已内联在 twikoo.min.js 中，无需额外引入 CSS 文件
     ['script', { type: 'text/javascript' },
       `(function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
